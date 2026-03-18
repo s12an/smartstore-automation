@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 import traceback
 import requests
 import json
@@ -12,11 +12,6 @@ from supabase import create_client, Client
 from openai import OpenAI
 
 # ---------------------------------------------------------
-# [0] 글로벌 설정 (데모 모드)
-# ---------------------------------------------------------
-USE_NAVER_API = False # 데모 버전에서는 False로 설정
-
-# ---------------------------------------------------------
 # [0] 페이지 기본 설정
 # ---------------------------------------------------------
 st.set_page_config(
@@ -24,20 +19,6 @@ st.set_page_config(
     page_icon="🛍️",
     layout="wide",
 )
-
-# --- Premium UI/UX Styling (Nano Banana 스타일) ---
-st.markdown("""
-<style>
-    .stImage img {
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-    }
-    h1 { color: #1E1E1E; font-weight: 800; }
-    h2 { color: #333; font-weight: 700; }
-    .stMarkdown { line-height: 1.6; }
-</style>
-""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # [1] Supabase 초기화 및 세션 (Mock 지원)
@@ -373,50 +354,20 @@ def generate_detail_page_gemini(api_key, prod_name, ref_urls):
 def generate_detail_page(prod_name, ref_urls):
     # 가짜 모드(Mock)인 경우 더미 텍스트 반환
     if _is_mock_mode():
-        time.sleep(1.5)
-        return f"""# 🚨 품질 대란! 품절 임박!
-## "{prod_name}" - 드디어 공개되는 역대급 진정 솔루션
+        time.sleep(2)
+        return f"""# 🛍️ {prod_name} 완벽 상세페이지 (미리보기)
 
-[IMAGE:HERO]
+> 이 페이지는 API 연결 전 테스트용 가짜 텍스트(Mock Data)입니다!
 
----
+## ✨ 최고로 적합한 템플릿으로 분석된 결과입니다.
+참고하신 레퍼런스 `{ref_urls}` 를 분석하여 최적의 카피를 도출했습니다.
 
-### 🤔 지속되는 피부 고민? 아직도 해결 못하셨나요?
-- [ ] 특정 시기에 꼭 트러블이 올라와요.
-- [ ] 뭘 발라도 피부가 울퉁불퉁해요. 🧴
-- [ ] 피부가 쉽게 붉어지고, 건조해져요. 🏜️
+### 📌 체크포인트
+- ✅ 소구점 1: 상품명 '{prod_name}' 기반 최적화
+- ✅ 소구점 2: 확실한 품질 보증
+- ✅ 소구점 3: 빠른 배송과 안전한 포장
 
-**위 사항 중 하나라도 해당된다면, 이 상세페이지를 끝까지 봐주세요!**
-
----
-
-### 🍯 진정 시너지 성분을 그대로!
-## '시카마누 바이옴™ (Cicamanu Biome)'
-파넬만의 독자 성분인 시카마누 바이옴은 피부 진정, 보습에 특화된 최적의 성분으로 외부 자극에 의해 자극받은 피부를 즉각 진정시켜줍니다.
-
-[IMAGE:POINT1]
-
----
-
-### ✨ POINT 1. 독보적인 진정+보습 레시피
-- 뉴질랜드산 꿀추출물 함유 🐝
-- 마데카소사이드의 강력한 진정 효과 🌿
-- 락토바실러스 발효물로 강화되는 피부 장벽
-
-[IMAGE:POINT2]
-
-### ✨ POINT 2. 끈적임 없는 꿀광 광채
-무겁고 답답한 제형은 이제 그만! 바르는 순간 스며들어 속보습은 채우고 겉은 산뜻하게 마무리됩니다.
-
----
-
-### ✅ 4주 사용 후 놀라운 변화
-#### "#4주진정솔루션"
-- 피부 진정 효과 테스트 완료 ⭕
-- 피지량 개선 효과 확인 ⭕
-- 피부 수분량 200% 증가 ⭕
-
-*데모 버전입니다. 생성된 상세페이지를 기반으로 네이버 스마트스토어 등록을 테스트해보세요!*
+*버튼을 눌러 네이버 스마트스토어 API 연동을 바로 테스트 해볼 수 있습니다!*
 """
 
     openai_key = fetch_api_key("openai")
@@ -438,101 +389,80 @@ def generate_detail_page(prod_name, ref_urls):
 
 def render_dashboard():
     st.header("✨ 스마트스토어 상세페이지 생성 작업실")
-    
-    # [A] 입력 섹션
-    with st.expander("📝 상품 정보 입력", expanded=True):
-        prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
-        ref_urls = st.text_area("참고 URL (레퍼런스)", placeholder="참고할 상세페이지 주소를 입력하세요 (여러 개 가능)")
-        
-        uploaded_file = st.file_uploader("대표 이미지 업로드 (선택)", type=["jpg", "png", "jpeg"])
-        if uploaded_file:
-            st.session_state["uploaded_img"] = uploaded_file
-            st.image(uploaded_file, caption="업로드된 이미지 미리보기", width=200)
-
-        if st.button("🚀 상세페이지 생성", type="primary", use_container_width=True):
-            if not prod_name:
-                st.warning("상품명을 입력해주세요.")
-            else:
-                try:
-                    with st.spinner("AI가 상세페이지를 마법처럼 생성 중입니다..."):
-                        generated_content = generate_detail_page(prod_name, ref_urls)
-                        st.session_state["last_generated"] = generated_content
-                        st.session_state["last_prod_name"] = prod_name
-                        st.success("상세페이지 생성이 완료되었습니다!")
-                except Exception as e:
-                    st.error(f"생성 중 에러 발생: {e}")
-
-    # [B] 결과 및 데모 섹션
-    if st.session_state.get("last_generated"):
+    st.warning("💡 **무�    if st.session_state.get("last_generated") is not None:
         st.divider()
-        st.subheader("👀 생성 결과 미리보기 및 검토")
-        st.info("AI가 생성한 기획안입니다. 확인 후 필요 시 다운로드하거나 데모 등록을 시도해보세요.")
+        st.subheader("👀 [미리보기] 생성 결과 검토")
+        st.markdown(st.session_state["last_generated"])
         
-        # --- 리치 렌더링 (이미지 포함) ---
-        content = st.session_state["last_generated"]
-        image_map = {
-            "[IMAGE:HERO]": "assets/hero_refined.png",
-            "[IMAGE:POINT1]": "assets/point1.png",
-            "[IMAGE:POINT2]": "assets/point2_refined.png"
-        }
-        
-        # 섹션별 렌더링
-        import os
-        parts = [content]
-        for key in image_map.keys():
-            new_parts = []
-            for p in parts:
-                if key in p:
-                    splits = p.split(key)
-                    # p1, key, p2
-                    new_parts.append(splits[0])
-                    new_parts.append(key)
-                    new_parts.append(splits[1])
-                else:
-                    new_parts.append(p)
-            parts = new_parts
-            
-        for p in parts:
-            if p in image_map:
-                img_path = image_map[p]
-                if os.path.exists(img_path):
-                    st.image(img_path, use_container_width=True)
-                else:
-                    st.caption(f" (이미지 준비 중: {img_path}) ")
-            else:
-                if p.strip():
-                    st.markdown(p)
+        st.download_button(
+            label="📄 마크다운 파일로 다운로드",
+            data=st.session_state["last_generated"],
+            file_name=f"{st.session_state.get('last_prod_name', '상품')}_상세페이지.md",
+            mime="text/markdown"
+        )
+on_state["last_prod_name"] = prod_name
+
+            except Exception as e:
+                st.error(f"생성 중 에러 발생: {e}")
+                # st.code(traceback.format_exc()) # 로깅용
+
+    if st.session_state.get("last_generated") is not None:
+        st.divider()
+        st.subheader("👀 [데모] 생성 결과 미리보기 및 검토")
+        st.info("AI가 생성한 기획안입니다. 확인 후 필요 시 다운로드하거나 네이버로 전송할 수 있습니다.")
+        st.markdown(st.session_state["last_generated"])
         
         col_dl, col_nv = st.columns(2)
         with col_dl:
             st.download_button(
-                label="📄 마크다운 파일로 다운로드",
+                label="마크다운 파일로 다운로드",
                 data=st.session_state["last_generated"],
                 file_name=f"{st.session_state.get('last_prod_name', '상품')}_상세페이지.md",
-                mime="text/markdown",
-                use_container_width=True
+                mime="text/markdown"
             )
             
         with col_nv:
-            # --- 데모 로직 적용 ---
-            if st.button("🧪 스마트스토어 등록 (데모)", type="primary", use_container_width=True):
-                with st.spinner("데모 등록 처리 중..."):
-                    time.sleep(1.5)
-                    
-                    st.balloons()
-                    st.toast("🎉 데모 등록 완료!", icon="✅")
-                    st.success("✅ 데모: 상품이 스마트스토어에 등록된 것처럼 처리되었습니다!")
+            if st.button("네이버 스마트스토어 임시저장 (API 연동)", type="primary"):
+                naver_id = fetch_api_key("naver_client_id")
+                naver_secret = fetch_api_key("naver_client_secret")
+                
+                if not (naver_id and naver_secret):
+                    st.error("관리자 패널에서 네이버 API 정보를 먼저 등록해주세요.")
+                else:
+                    with st.spinner("네이버 연동 중..."):
+                        token = get_naver_token(naver_id, naver_secret)
+                        if token or isinstance(supabase, MockSupabase):
+                            # 가짜 모드 일경우 강제로 성공 처리
+                            if isinstance(supabase, MockSupabase):
+                                time.sleep(1)
+                                st.success("테스트 모드: 네이버 스마트스토어에 상품이 성공적으로 등록(임시저장) 되었습니다!")
+                            else:
+                                # 이미지 업로드 먼저 시도 (세션 상태에서 안전하게 가져오기)
+                                current_img = st.session_state.get("uploaded_img")
+                                naver_img_url = None
+                                if current_img:
+                                    naver_img_url = upload_naver_image(token, current_img)
+                                    if not naver_img_url:
+                                        st.warning("네이버 서버 이미지 업로드에 실패했습니다. (기본 이미지로 대체됩니다)")
 
-                    # 가짜 결과 출력
-                    with st.expander("📦 등록 정보 확인 (데모)", expanded=True):
-                        st.info(f"**상품명**: {st.session_state.get('last_prod_name', '상품')}")
-                        if "uploaded_img" in st.session_state:
-                            st.image(st.session_state["uploaded_img"], caption="대표 이미지 (데모)", width=300)
-                        
-                        st.markdown("---")
-                        st.markdown("### 📄 상세페이지 본문 (HTML 변환 가정)")
-                        # 마크다운을 그대로 보여주거나 HTML 프리뷰라고 가정
-                        st.code(st.session_state.get("last_generated", "")[:500] + "...", language="html")
+                                # 선택된 카테고리 ID 사용
+                                target_cat = st.session_state.get("selected_cat_id", "50000000")
+                                res = upload_to_naver_smartstore(
+                                    token, 
+                                    target_cat, 
+                                    st.session_state.get("last_prod_name", "스마트스토어 자동 상품"),
+                                    st.session_state["last_generated"],
+                                    image_url=naver_img_url
+                                )
+                                if res.status_code == 200:
+                                    st.success("네이버 스마트스토어에 상품이 성공적으로 등록(임시저장) 되었습니다!")
+                                    # 상태 업데이트 가능
+                                else:
+                                    st.error(f"등록 실패: {res.status_code} - {res.text}")
+        
+    # 작업 내역 섹션 제거됨
+    pass
+
 
 # ---------------------------------------------------------
 # [4] 관리자 패널 (admin 전용)
