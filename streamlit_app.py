@@ -242,15 +242,33 @@ def generate_detail_page(prod_name, ref_urls):
         content = generate_detail_page_zimage(prod_name, ref_urls)
 
     sections = []
+    # Robust Parsing: Split by SECTION marker
     parts = content.split("=== SECTION:")[1:]
     for p in parts:
         try:
-            h, b = p.split("===", 1)
-            h_parts = h.split("===", 1)
-            tag = h_parts[0].strip()
-            title = h_parts[1].strip() if len(h_parts) > 1 else ""
-            sections.append({"tag": tag, "title": title, "body": b.strip(), "image": "[IMAGE:DEFAULT]"})
-        except: continue
+            # First split to separate Header from Body (Header ends with ===\n or just ===)
+            if "===\n" in p:
+                header, body = p.split("===\n", 1)
+            elif "===" in p:
+                header, body = p.split("===", 1)
+            else:
+                continue
+            
+            # Header further split into Tag and Title using ===
+            if "===" in header:
+                tag, title = header.split("===", 1)
+            else:
+                tag, title = header, ""
+                
+            sections.append({
+                "tag": tag.strip(),
+                "title": title.strip(),
+                "body": body.strip(),
+                "image": "[IMAGE:DEFAULT]"
+            })
+        except Exception as e:
+            print(f"Parsing error for part: {e}")
+            continue
     return sections
 
 def render_dashboard():
