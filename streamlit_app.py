@@ -464,28 +464,20 @@ def render_dashboard():
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("#### 🌐 앱 공유 주소")
-    # Streamlit Cloud 배포 시 자동으로 실제 URL 감지
-    try:
-        from streamlit.runtime.scriptrunner import get_script_run_ctx
-        ctx = get_script_run_ctx()
-        session_id = ctx.session_id if ctx else ""
-        # 실제 배포 환경에서는 st.query_params를 통해 호스트 확인
-        host = st.context.headers.get("host", "") if hasattr(st, 'context') else ""
-        if host and "localhost" not in host:
-            detected_url = f"https://{host}"
-        else:
-            detected_url = None
-    except:
-        detected_url = None
-
-    if detected_url:
-        st.sidebar.success(f"🔗 {detected_url}")
-        st.sidebar.link_button("👉 클릭 → 앱 바로 열기", detected_url, use_container_width=True)
-        st.sidebar.caption("모바일 쮜구에서 악세스 가능 ↑")
-    else:
-        st.sidebar.info("📱 브라우저 주소청에서\n현재 URL을 복사하세요")
-        st.sidebar.caption("로컈(테스트) 환경 중 \
-\n실 배포 주소는 Streamlit Cloud\n대시보드에서 확인 후\n저한테 알려주세요!")
+    # 확인된 실제 배포 주소
+    LIVE_URL = "https://smartstore-automation.streamlit.app/"
+    st.sidebar.link_button(
+        "👉 이곳을 누르면 앱이 열립니다",
+        LIVE_URL,
+        use_container_width=True,
+        type="primary"
+    )
+    st.sidebar.code(LIVE_URL, language=None)
+    st.sidebar.caption(
+        "⚠️ 사용자들이 로그인 없이 접속하려면:\n"
+        "Streamlit Cloud → 앱 설정 → Sharing\n"
+        "→ 'Public' 으로 변경 필요"
+    )
 
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
