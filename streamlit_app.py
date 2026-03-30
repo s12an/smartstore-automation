@@ -191,14 +191,56 @@ def scrape_url_text(ref_str):
         return ref_str # It's just plain text
     try:
         url = match.group(0)
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        res = requests.get(url, headers=headers, timeout=5)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        res = requests.get(url, headers=headers, timeout=8)
         soup = BeautifulSoup(res.text, 'html.parser')
         text = " ".join(soup.stripped_strings)
-        return text[:3000] # Limit to avoid massive token count
+        return text[:4000]  # Limit to avoid massive token count
     except Exception as e:
         print(f"Scraping failed: {e}")
         return ref_str
+
+def scrape_product_images(ref_str):
+    """URL에서 제품 이미지 URL을 여러 장 캔다. 스마트스토어/네이버 콜러파이 특수 파싱"""
+    images = []
+    if not ref_str:
+        return images
+    match = re.search(r"https?://[^\s]+", ref_str)
+    if not match:
+        return images
+    try:
+        url = match.group(0)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        res = requests.get(url, headers=headers, timeout=8)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        
+        # 네이버 콜러파이/스마트스토어 특화 이미지 태그 선택
+        img_tags = soup.find_all('img', src=True)
+        seen = set()
+        for img in img_tags:
+            src = img.get('src', '') or img.get('data-src', '')
+            if not src:
+                continue
+            # https로 시작하는 실제 제품 이미지만 선별 (아이콘/로고 제외)
+            if src.startswith('http') and src not in seen:
+                # 파일명에서 제품 이미지일 가능성이 높은 것들만
+                skip_keywords = ['logo', 'icon', 'banner-top', 'gnb', 'sprite', 'btn', 'arrow', 'close', 'naver']
+                if any(kw in src.lower() for kw in skip_keywords):
+                    continue
+                # 크기 필터: 200x200 이무리 문자열이 있으는 것만
+                width = img.get('width', '0')
+                try:
+                    if int(str(width).replace('px','')) < 100:
+                        continue
+                except:
+                    pass
+                images.append(src)
+                seen.add(src)
+                if len(images) >= 8:  # 최대 8장
+                    break
+    except Exception as e:
+        print(f"Image scraping failed: {e}")
+    return images
 
 def generate_detail_page_openai(api_key, prod_name, ref_urls, image_b64=None):
     try:
@@ -421,6 +463,18 @@ def render_dashboard():
         st.warning("⚠️ AI 설정이 부재하여 Zimage 모드로 자동 가동 중입니다. (무제한)")
 
     st.sidebar.markdown("---")
+    # 실시간 접속 주소 (클릭 가능한 링크)
+    live_url = "https://smartstore-automation.streamlit.app/"
+    st.sidebar.markdown(
+        f"""
+        <div style='background:#1a1a2e; border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
+            <div style='color:#FFD700; font-weight:800; font-size:13px; margin-bottom:6px;'>🌐 외부 공유 주소</div>
+            <a href='{live_url}' target='_blank' style='color:#7EB2FF; font-size:12px; word-break:break-all; text-decoration:none;'>{live_url}</a>
+            <div style='color:#888; font-size:11px; margin-top:6px;'>↑ 클릭하면 외부에서 접속 가능</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
     ref_urls = st.sidebar.text_area("🔗 크롤링 대상 주소 (URL)", placeholder="예: https://smartstore.naver.com/... \nAI가 이곳으로 접속하여 정보를 스크래핑합니다.")
 
     with st.expander("📝 상품 정보 입력", expanded=True):
@@ -450,6 +504,11 @@ def render_dashboard():
                             st.session_state["uploaded_img_b64"] = img_b64 # Cache for rendering
                             
                         res = generate_detail_page(prod_name, ref_urls, img_b64)
+                        # 크롤링에서 제품 이미지 수집
+                        crawled_imgs = scrape_product_images(ref_urls)
+                        st.session_state["crawled_imgs"] = crawled_imgs
+                        if crawled_imgs:
+                            st.info(f"✅ URL에서 제품 이미지 {len(crawled_imgs)}장 수집 완료!")
                         if res:
                             st.session_state["last_generated"] = res
                             st.session_state["last_prod_name"] = prod_name
@@ -486,10 +545,26 @@ def render_dashboard():
         
         sections = st.session_state["last_generated"]
         img_b64 = st.session_state.get("uploaded_img_b64")
+        crawled_imgs = st.session_state.get("crawled_imgs", [])
         
-        # 기본 더미 Base64 (회색 배경 방지용 아주 작은 픽셀) 또는 외부 URL
-        fallback_img_url = "https://via.placeholder.com/1000?text=No+Image+Provided"
-        img_src = f"data:image/jpeg;base64,{img_b64}" if img_b64 else fallback_img_url
+        # 이미지 소스 풀: 업로드 이미지 + 크롤링 이미지 + Unsplash 전문 정커 폌백
+        # Unsplash 코스메틱 전문 이미지 풀 (적파, 카테고리별로 다양한 샵)
+        UNSPLASH_POOL = [
+            "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1000",  # 세럼 빅
+            "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1000",  # 스킨케어 털스쳐
+            "https://images.unsplash.com/photo-1612817288484-6f916006741a?w=1000",  # 코스메틱 클로즈업
+            "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1000",  # 립스탱/크림
+            "https://images.unsplash.com/photo-1631730486572-226d1f595b68?w=1000",  # 손 위 제품
+            "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=1000",  # 피부 템스쳐
+            "https://images.unsplash.com/photo-1570194065650-d99fb4b38e5b?w=1000",  # 퍼폄승 세럼병
+            "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=1000",  # 뼷치로 스킨케어
+        ]
+        
+        # 이미지 풀 구성: 크롤링이미지 우선 > Unsplash 폌백
+        img_pool = crawled_imgs + UNSPLASH_POOL
+        
+        fallback_img_url = UNSPLASH_POOL[0]
+        img_src = f"data:image/jpeg;base64,{img_b64}" if img_b64 else (img_pool[0] if img_pool else fallback_img_url)
 
         # Build massive HTML string to embed via true iFrame
         html_blocks = []
@@ -500,9 +575,19 @@ def render_dashboard():
             title = sec['title'].replace('"', '&quot;')
             body = sec['body'].replace('\n', '<br>')
             
-            # Use uploaded image for HERO, use studio image for alternate blocks
-            current_img_src = img_src
-            if i > 0 and studio_url and i % 2 == 1:
+            # 섹션마다 다른 이미지 선택 (pool에서 순환)
+            # HERO는 업로드 이미지 우선, 나머지 섹셸은 pool에서 순환
+            if i == 0:
+                current_img_src = img_src  # HERO는 대표 이미지
+            else:
+                # pool_index: pool[1]~[7] 순환 사용
+                pool_idx = (i % max(len(img_pool) - 1, 1)) + 1
+                pool_idx = min(pool_idx, len(img_pool) - 1)
+                current_img_src = img_pool[pool_idx]
+            
+            # studio shot 있으면 홀수 별인덱스를 studio로 교체
+            studio_url = st.session_state.get("studio_image_url")
+            if studio_url and i % 3 == 2:
                 current_img_src = studio_url
             
             # High-End CSS Patterns based on sections (Serif & Luxury Minimalist)
