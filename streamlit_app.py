@@ -8,9 +8,11 @@ import urllib.parse
 import uuid
 import os
 import io
+import base64
 from PIL import Image
 from supabase import create_client, Client
 from openai import OpenAI
+import streamlit.components.v1 as components
 
 # --- 글로벌 설정 ---
 # Naver API 연동 제거: 자체 프리뷰 및 텍스트 분석에 집중
@@ -158,20 +160,38 @@ def fetch_api_key(service="openai"):
     except: pass
     return None
 
-def generate_detail_page_openai(api_key, prod_name, ref_urls):
+def image_to_base64(image_bytesio):
+    if not image_bytesio:
+        return None
+    image_bytesio.seek(0)
+    return base64.b64encode(image_bytesio.read()).decode('utf-8')
+
+def generate_detail_page_openai(api_key, prod_name, ref_urls, image_b64=None):
     try:
         client = OpenAI(api_key=api_key)
-        prompt = f"""네이버 스마트스토어 상세페이지 기획안을 작성하세요.
+        prompt = f"""네이버 스마트스토어 및 고품질 랜딩페이지용 상세 기획안을 작성하세요.
 [상품정보]
 - 상품명: {prod_name}
 - 참고내용: {ref_urls}
 [규칙]
-1. 반드시 정보에 근거할 것. 모르면 모른다고 답할 것.
+1. 반드시 정보에 근거할 것. (거짓 정보 방지)
 2. 각 섹션을 === SECTION: [태그] === [제목] === 형식을 시작할 것.
-3. 6개 이상의 섹션을 독립적으로 구성할 것."""
+3. 6개 이상의 섹션(HERO, POINT 1, POINT 2, POINT 3, RESULTS, INFO 등)을 구성할 것.
+4. 첨부된 이미지가 있다면, 이미지 속 제품의 형태, 색상, 주요 특징 및 질감을 시각적으로 분석하여 카피라이팅에 실감나게 반영할 것."""
+
+        messages = [{"role": "user", "content": prompt}]
+        if image_b64:
+            messages = [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
+                ]
+            }]
+
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             temperature=0.7
         )
         return response.choices[0].message.content
@@ -180,12 +200,23 @@ def generate_detail_page_openai(api_key, prod_name, ref_urls):
             return "QUOTA_EXCEEDED"
         return f"ERROR: {e}"
 
-def generate_detail_page_gemini(api_key, prod_name, ref_urls):
+def generate_detail_page_gemini(api_key, prod_name, ref_urls, image_b64=None):
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
-        prompt = f"상품명: {prod_name}, 참고: {ref_urls} 를 바탕으로 상세페이지 6섹션을 === SECTION: [태그] === [제목] === 형식으로 작성하세요."
-        data = {"contents": [{"parts": [{"text": prompt}]}]}
-        response = requests.post(url, json=data, timeout=10)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
+        prompt = f"""상품명: {prod_name}, 참고: {ref_urls}.
+첨부된 사진(있다면)의 제품 특성, 로고, 디자인을 분석하여 실제 제품에 부합하는 상세페이지 6섹션을 === SECTION: [태그] === [제목] === 형식으로 작성하세요."""
+        
+        parts = [{"text": prompt}]
+        if image_b64:
+            parts.append({
+                "inline_data": {
+                    "mime_type": "image/jpeg",
+                    "data": image_b64
+                }
+            })
+            
+        data = {"contents": [{"parts": parts}]}
+        response = requests.post(url, json=data, timeout=15)
         if response.status_code == 200:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         elif response.status_code == 429:
@@ -214,7 +245,7 @@ def generate_detail_page_zimage(prod_name, ref_urls):
 === SECTION: INFO === 📦 제품 정보 및 배포 안내 ===
 본 상세페이지는 나노바나나 프로 엔진으로 생성되었습니다. {prod_name}의 정품 여부를 반드시 확인하시고 배송 및 교환 안내를 참조하시기 바랍니다."""
 
-def generate_detail_page(prod_name, ref_urls):
+def generate_detail_page(prod_name, ref_urls, image_b64=None):
     # Diagnostic: Check for key existence first
     okey = fetch_api_key("openai")
     gkey = fetch_api_key("gemini")
@@ -224,19 +255,19 @@ def generate_detail_page(prod_name, ref_urls):
     
     content = ""
     
-    # Priority 1: OpenAI (GPT-4o)
+    # Priority 1: OpenAI (GPT-4o Vision)
     if okey:
         try:
-            content = generate_detail_page_openai(okey, prod_name, ref_urls)
+            content = generate_detail_page_openai(okey, prod_name, ref_urls, image_b64)
             if "QUOTA_EXCEEDED" in content: raise Exception("Quota")
         except Exception as e:
             print(f"OpenAI Failed, switching to Gemini/Zimage: {e}")
             okey = None # Fallback trigger
             
-    # Priority 2: Gemini
+    # Priority 2: Gemini (Vision)
     if not okey and gkey:
         try:
-            content = generate_detail_page_gemini(gkey, prod_name, ref_urls)
+            content = generate_detail_page_gemini(gkey, prod_name, ref_urls, image_b64)
             if content == "QUOTA_EXCEEDED" or not content:
                 content = "" # Fallback to Zimage
         except Exception as e:
@@ -332,13 +363,19 @@ def render_dashboard():
             if not prod_name:
                 st.error("상품명을 입력해주세요.")
             else:
-                with st.spinner("최고급 '나노바나나프로' 엔진으로 생성 중..."):
+                with st.spinner("최고급 '나노바나나프로' 엔진으로 Vision AI 분석 및 생성 중..."):
                     try:
-                        res = generate_detail_page(prod_name, ref_urls)
+                        # Extract Base64 if image exists
+                        img_b64 = None
+                        if st.session_state.get("uploaded_img"):
+                            img_b64 = image_to_base64(st.session_state["uploaded_img"])
+                            st.session_state["uploaded_img_b64"] = img_b64 # Cache for rendering
+                            
+                        res = generate_detail_page(prod_name, ref_urls, img_b64)
                         if res:
                             st.session_state["last_generated"] = res
                             st.session_state["last_prod_name"] = prod_name
-                            st.success("✅ 생성이 완료되었습니다!")
+                            st.success("✅ 시각 분석 및 생성이 완료되었습니다!")
                         else:
                             st.error("생성에 실패했습니다. 다시 시도해주세요.")
                     except Exception as gen_err:
@@ -346,35 +383,79 @@ def render_dashboard():
 
     if st.session_state.get("last_generated"):
         st.divider()
-        st.subheader("👀 생성 결과 미리보기")
+        st.subheader("👀 시니어 레벨 1000x1000 상세페이지 프리뷰")
         
         sections = st.session_state["last_generated"]
+        img_b64 = st.session_state.get("uploaded_img_b64")
         
-        # 이미지 맵 설정 (업로드된 이미지가 있으면 첫 번째 섹션에 적용)
-        hero_img = "assets/hero_refined.png"
-        if st.session_state.get("uploaded_img"):
-            hero_img = st.session_state["uploaded_img"]
-            
-        image_map = {
-            "HERO": hero_img,
-            "DEFAULT": "assets/hero.png"
-        }
-        
-        for i, sec in enumerate(sections):
-            st.markdown(f"""
-            <div class="detail-section">
-                <div class="section-tag">{sec['tag']}</div>
-                <h3>{sec['title']}</h3>
-                <div style="font-size: 1.1rem; color: #555; white-space: pre-wrap; text-align: left; width: 100%;">{sec['body']}</div>
-            </div>""", unsafe_allow_html=True)
-            
-            # 이미지 출력 (첫 번째 섹션은 HERO, 나머지는 DEFAULT 또는 매핑)
-            display_img = image_map["HERO"] if i == 0 else image_map["DEFAULT"]
-            st.image(display_img, use_container_width=True)
-            st.write("")
+        # 기본 더미 Base64 (회색 배경 방지용 아주 작은 픽셀) 또는 외부 URL
+        fallback_img_url = "https://via.placeholder.com/1000?text=No+Image+Provided"
+        img_src = f"data:image/jpeg;base64,{img_b64}" if img_b64 else fallback_img_url
 
-        full_txt = "\n\n".join([f"## {s['tag']}\n{s['body']}" for s in sections])
-        st.download_button("📄 전체 기획안 다운로드", full_txt, file_name="상세페이지_기획안.txt", use_container_width=True)
+        # Build massive HTML string to embed via true iFrame
+        html_blocks = []
+        for i, sec in enumerate(sections):
+            tag = sec['tag'].upper()
+            title = sec['title'].replace('"', '&quot;')
+            body = sec['body'].replace('\n', '<br>')
+            
+            # CSS Patterns based on sections
+            if i % 3 == 0 or "HERO" in tag:
+                # HERO Pattern: Full background overlay
+                block = f"""
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; justify-content: flex-end; padding: 80px; box-sizing: border-box; background: url('{img_src}') center/cover no-repeat; margin-bottom: 20px;">
+                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);"></div>
+                    <div style="position: relative; z-index: 10;">
+                        <span style="display:inline-block; padding:8px 16px; background:#FFD700; color:#000; font-weight:800; font-size:24px; border-radius:4px; margin-bottom:20px;">{tag}</span>
+                        <h1 style="color: #FFF; font-size: 64px; font-weight: 900; line-height: 1.2; margin: 0 0 30px 0; letter-spacing:-1px;">{title}</h1>
+                        <p style="color: #EEE; font-size: 28px; line-height: 1.6; font-weight: 300; max-width:800px; word-break: keep-all;">{body}</p>
+                    </div>
+                </div>
+                """
+            elif i % 3 == 1:
+                # SIDE-BY-SIDE Pattern
+                block = f"""
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: row; background: #F9F9F9; margin-bottom: 20px;">
+                    <div style="flex:1; padding: 100px 60px; display:flex; flex-direction:column; justify-content:center;">
+                        <span style="color:#0055FF; font-weight:800; font-size:22px; margin-bottom:15px; letter-spacing:1px;">{tag}</span>
+                        <h2 style="color: #222; font-size: 48px; font-weight: 800; line-height: 1.3; margin: 0 0 40px 0;">{title}</h2>
+                        <div style="color: #555; font-size: 24px; line-height: 1.8; font-weight: 400; word-break: keep-all;">{body}</div>
+                    </div>
+                    <div style="flex:1; background: url('{img_src}') center/cover no-repeat;"></div>
+                </div>
+                """
+            else:
+                # STATS/INFO Pattern (Glassmorphism overlap)
+                block = f"""
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; align-items: center; justify-content: center; background: url('{img_src}') top/cover no-repeat; margin-bottom: 20px;">
+                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);"></div>
+                    <div style="position: relative; z-index: 10; width: 85%; background: rgba(255,255,255,0.95); padding: 80px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align:center;">
+                        <div style="display:inline-block; padding:6px 20px; border:2px solid #222; color:#222; font-weight:800; font-size:20px; border-radius:30px; margin-bottom:30px;">{tag}</div>
+                        <h2 style="color: #111; font-size: 52px; font-weight: 900; line-height: 1.3; margin: 0 0 40px 0;">{title}</h2>
+                        <div style="color: #444; font-size: 26px; line-height: 1.7; font-weight: 500; word-break: keep-all;">{body}</div>
+                    </div>
+                </div>
+                """
+            html_blocks.append(block)
+
+        # 캡슐화된 최종 HTML
+        final_html = f"""
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <style>body {{ margin:0; padding:0; display:flex; flex-direction:column; align-items:center; background:#ECECEC; }}</style>
+        </head>
+        <body>
+        {''.join(html_blocks)}
+        </body>
+        </html>
+        """
+        
+        # IFrame으로 격리 렌더링 (RemoveChild DOM 에러 완벽 해결)
+        components.html(final_html, height=1000 * len(sections) + 50, scrolling=True)
+
+        full_txt = "\n\n".join([f"## {s['tag']}\n{s['title']}\n{s['body']}" for s in sections])
+        st.download_button("📄 전체 카피라이팅 텍스트 추출 (.txt)", full_txt, file_name="상세페이지_기획안.txt", use_container_width=True)
 
 def render_admin_panel():
     st.header("🛠️ 관리자 패널")
