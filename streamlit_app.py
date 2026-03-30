@@ -186,11 +186,13 @@ def generate_studio_shot(api_key, prod_name):
 def scrape_url_text(ref_str):
     if not ref_str:
         return ""
-    if not ref_str.startswith("http"):
+    match = re.search(r"https?://[^\s]+", ref_str)
+    if not match:
         return ref_str # It's just plain text
     try:
+        url = match.group(0)
         headers = {'User-Agent': 'Mozilla/5.0'}
-        res = requests.get(ref_str, headers=headers, timeout=5)
+        res = requests.get(url, headers=headers, timeout=5)
         soup = BeautifulSoup(res.text, 'html.parser')
         text = " ".join(soup.stripped_strings)
         return text[:3000] # Limit to avoid massive token count
@@ -459,24 +461,24 @@ def render_dashboard():
             if "HERO" in tag:
                 # HERO Pattern: Full background overlay (Soft opacity)
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: column; justify-content: flex-end; padding: 100px; box-sizing: border-box; margin-bottom: 20px;">
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: column; justify-content: flex-end; padding: 10%; box-sizing: border-box; margin-bottom: 20px;">
                     <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: url('{current_img_src}') center/cover no-repeat; opacity: 0.9;"></div>
                     <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 70%, transparent 100%);"></div>
                     <div style="position: relative; z-index: 10; text-align: center;">
                         <span style="display:inline-block; padding:8px 20px; color:#FFF; font-weight:400; font-size:18px; letter-spacing:4px; margin-bottom:30px; border-top: 1px solid #FFF; border-bottom: 1px solid #FFF;">{tag}</span>
-                        <h1 style="color: #FFF; font-size: 58px; font-weight: 700; line-height: 1.3; margin: 0 0 40px 0; letter-spacing:-1px;">{title}</h1>
-                        <p style="color: #F0F0F0; font-size: 24px; line-height: 1.8; font-weight: 300; max-width:800px; margin: 0 auto; word-break: keep-all;">{body}</p>
+                        <h1 style="color: #FFF; font-size: 5vw; max-font-size: 58px; font-weight: 700; line-height: 1.3; margin: 0 0 40px 0; letter-spacing:-1px;">{title}</h1>
+                        <p style="color: #F0F0F0; font-size: 2vw; max-font-size: 24px; line-height: 1.8; font-weight: 300; max-width:800px; margin: 0 auto; word-break: keep-all;">{body}</p>
                     </div>
                 </div>
                 """
             elif i % 3 == 1:
                 # SIDE-BY-SIDE Clean Minimalist Pattern
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: row; background: #FAFAFA; margin-bottom: 20px;">
-                    <div style="flex:1; padding: 120px 70px; display:flex; flex-direction:column; justify-content:center;">
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: row; background: #FAFAFA; margin-bottom: 20px;">
+                    <div style="flex:1; padding: 10% 7%; display:flex; flex-direction:column; justify-content:center;">
                         <span style="color:{tag_color}; font-weight:500; font-size:16px; margin-bottom:20px; letter-spacing:2px; text-transform:uppercase;">{tag}</span>
-                        <h2 style="color: #111; font-size: 42px; font-weight: 600; line-height: 1.4; margin: 0 0 50px 0; letter-spacing:-0.5px; border-bottom: 2px solid #222; padding-bottom: 30px;">{title}</h2>
-                        <div style="color: #444; font-size: 20px; line-height: 2.0; font-weight: 300; word-break: keep-all;">{body}</div>
+                        <h2 style="color: #111; font-size: 4vw; max-font-size: 42px; font-weight: 600; line-height: 1.4; margin: 0 0 50px 0; letter-spacing:-0.5px; border-bottom: 2px solid #222; padding-bottom: 30px;">{title}</h2>
+                        <div style="color: #444; font-size: 1.8vw; max-font-size: 20px; line-height: 2.0; font-weight: 300; word-break: keep-all;">{body}</div>
                     </div>
                     <div style="flex:1; background: url('{current_img_src}') center/cover no-repeat;"></div>
                 </div>
@@ -484,12 +486,12 @@ def render_dashboard():
             else:
                 # INFO / OVERLAP Elegant Card Pattern
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; align-items: center; justify-content: center; background: url('{current_img_src}') top/cover no-repeat; margin-bottom: 20px;">
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; align-items: center; justify-content: center; background: url('{current_img_src}') top/cover no-repeat; margin-bottom: 20px;">
                     <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.3);"></div>
-                    <div style="position: relative; z-index: 10; width: 80%; background: rgba(253,253,253,0.98); padding: 90px; border-radius: 4px; box-shadow: 0 30px 60px rgba(0,0,0,0.15); text-align:left;">
+                    <div style="position: relative; z-index: 10; width: 80%; background: rgba(253,253,253,0.98); padding: 8%; border-radius: 4px; box-shadow: 0 30px 60px rgba(0,0,0,0.15); text-align:left;">
                         <div style="display:inline-block; padding:4px 16px; border-left: {tag_border}; color:{tag_color}; font-weight:500; font-size:16px; letter-spacing:2px; margin-bottom:40px;">{tag}</div>
-                        <h2 style="color: #111; font-size: 46px; font-weight: 600; line-height: 1.3; margin: 0 0 50px 0; letter-spacing:-0.5px;">{title}</h2>
-                        <div style="color: #555; font-size: 21px; line-height: 1.9; font-weight: 300; word-break: keep-all;">{body}</div>
+                        <h2 style="color: #111; font-size: 4vw; max-font-size: 46px; font-weight: 600; line-height: 1.3; margin: 0 0 50px 0; letter-spacing:-0.5px;">{title}</h2>
+                        <div style="color: #555; font-size: 1.8vw; max-font-size: 21px; line-height: 1.9; font-weight: 300; word-break: keep-all;">{body}</div>
                     </div>
                 </div>
                 """
