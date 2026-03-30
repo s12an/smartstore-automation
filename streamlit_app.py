@@ -213,8 +213,13 @@ def generate_detail_page_zimage(prod_name, ref_urls):
 본 상세페이지는 나노바나나 프로 엔진으로 생성되었습니다. {prod_name}의 정품 여부를 반드시 확인하시고 배송 및 교환 안내를 참조하시기 바랍니다."""
 
 def generate_detail_page(prod_name, ref_urls):
+    # Diagnostic: Check for key existence first
     okey = fetch_api_key("openai")
     gkey = fetch_api_key("gemini")
+    
+    if not okey and not gkey:
+        print("CRITICAL: No API keys found! Defaulting to Zimage.")
+    
     content = ""
     
     # Priority 1: OpenAI (GPT-4o)
@@ -230,20 +235,25 @@ def generate_detail_page(prod_name, ref_urls):
     if not okey and gkey:
         try:
             content = generate_detail_page_gemini(gkey, prod_name, ref_urls)
-            if content == "QUOTA_EXCEEDED":
+            if content == "QUOTA_EXCEEDED" or not content:
                 content = "" # Fallback to Zimage
         except Exception as e:
             print(f"Gemini Failed, switching to Zimage: {e}")
             content = ""
 
     # Priority 3: Zimage (Infinite Fallback)
-    if not content or content == "API 호출 오류":
+    if not content or content == "API 호출 오류" or "ERROR:" in content:
         print("Using Zimage Fallback...")
         content = generate_detail_page_zimage(prod_name, ref_urls)
 
     sections = []
     # Robust Parsing: Split by SECTION marker
     parts = content.split("=== SECTION:")[1:]
+    if not parts:
+        # Fallback if no sections found due to malformed AI output
+        content = generate_detail_page_zimage(prod_name, ref_urls)
+        parts = content.split("=== SECTION:")[1:]
+
     for p in parts:
         try:
             # First split to separate Header from Body (Header ends with ===\n or just ===)
@@ -273,20 +283,38 @@ def generate_detail_page(prod_name, ref_urls):
 
 def render_dashboard():
     st.header("✨ 상세페이지 생성 작업실")
+    
+    # Diagnostic Check (Hidden from user, only for logs)
+    if not fetch_api_key("openai") and not fetch_api_key("gemini"):
+        st.warning("⚠️ AI 설정이 부재하여 Zimage 모드로 자동 가동 중입니다. (무제한)")
+
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
         ref_urls = st.text_area("참고 URL/텍스트", placeholder="상세페이지 기획의 근거가 될 정보를 입력하세요.")
         
-        uploaded_file = st.file_uploader("대표 이미지 업로드 (선택)", type=["jpg", "png", "jpeg"])
-        if uploaded_file:
-            st.session_state["uploaded_img"] = uploaded_file
-            st.image(uploaded_file, caption="업로드된 이미지 미리보기", width=200)
+        try:
+            uploaded_file = st.file_uploader("대표 이미지 업로드 (선택)", type=["jpg", "png", "jpeg"])
+            if uploaded_file:
+                st.session_state["uploaded_img"] = uploaded_file
+                st.image(uploaded_file, caption="업로드된 이미지 미리보기", width=200)
+        except Exception as img_err:
+            st.error(f"이미지 업로드 중 오류 발생: {img_err}. 다시 시도해주세요.")
 
         if st.button("🚀 생성 시작", type="primary", use_container_width=True):
-            with st.spinner("생성 중..."):
-                res = generate_detail_page(prod_name, ref_urls)
-                st.session_state["last_generated"] = res
-                st.session_state["last_prod_name"] = prod_name
+            if not prod_name:
+                st.error("상품명을 입력해주세요.")
+            else:
+                with st.spinner("최고급 '나노바나나프로' 엔진으로 생성 중..."):
+                    try:
+                        res = generate_detail_page(prod_name, ref_urls)
+                        if res:
+                            st.session_state["last_generated"] = res
+                            st.session_state["last_prod_name"] = prod_name
+                            st.success("✅ 생성이 완료되었습니다!")
+                        else:
+                            st.error("생성에 실패했습니다. 다시 시도해주세요.")
+                    except Exception as gen_err:
+                        st.error(f"생성 중 예외 발생: {gen_err}")
 
     if st.session_state.get("last_generated"):
         st.divider()
