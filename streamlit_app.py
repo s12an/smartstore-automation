@@ -463,18 +463,15 @@ def render_dashboard():
         st.warning("⚠️ AI 설정이 부재하여 Zimage 모드로 자동 가동 중입니다. (무제한)")
 
     st.sidebar.markdown("---")
-    # 실시간 접속 주소 (클릭 가능한 링크) - 사이드바에만
+    # 실시간 접속 주소 - link_button으로 클릭 즉시 이동 (모바일도 실제 작동)
     live_url = "https://smartstore-automation.streamlit.app/"
-    st.sidebar.markdown(
-        f"""
-        <div style='background:#1a1a2e; border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
-            <div style='color:#FFD700; font-weight:800; font-size:13px; margin-bottom:6px;'>🌐 외부 공유 주소</div>
-            <a href='{live_url}' target='_blank' style='color:#7EB2FF; font-size:12px; word-break:break-all; text-decoration:none;'>{live_url}</a>
-            <div style='color:#888; font-size:11px; margin-top:6px;'>↑ 클릭하면 외부에서 접속 가능</div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.sidebar.markdown("#### 🌐 외부 공유 주소")
+    st.sidebar.link_button(
+        "👉 클릭 → 앱 바로 열기",
+        live_url,
+        use_container_width=True,
     )
+    st.sidebar.caption(f"📋 주소 복사용: `{live_url}`")
 
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
