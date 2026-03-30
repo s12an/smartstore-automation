@@ -7,6 +7,8 @@ import urllib.request
 import urllib.parse
 import uuid
 import os
+import io
+from PIL import Image
 from supabase import create_client, Client
 from openai import OpenAI
 
@@ -281,6 +283,29 @@ def generate_detail_page(prod_name, ref_urls):
             continue
     return sections
 
+def optimize_image(uploaded_file, max_size=1000, quality=85):
+    """
+    업로드된 이미지를 나노바나나프로 규격(최대 1000x1000) 비율로 리사이징하고 
+    압축하여 메모리 및 네트워크 부하를 극도로 낮춥니다.
+    """
+    try:
+        img = Image.open(uploaded_file)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # 가로/세로 비율을 유지하면서 max_size 이하로 리사이징
+        img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        
+        # 압축된 이미지를 메모리 버퍼에 저장
+        output = io.BytesIO()
+        img.save(output, format="JPEG", quality=quality, optimize=True)
+        output.name = "optimized_image.jpg"
+        output.seek(0)
+        return output
+    except Exception as e:
+        print(f"Image optimization failed: {e}")
+        return uploaded_file # 실패 시 원본 그대로 반환
+
 def render_dashboard():
     st.header("✨ 상세페이지 생성 작업실")
     
@@ -295,8 +320,11 @@ def render_dashboard():
         try:
             uploaded_file = st.file_uploader("대표 이미지 업로드 (선택)", type=["jpg", "png", "jpeg"])
             if uploaded_file:
-                st.session_state["uploaded_img"] = uploaded_file
-                st.image(uploaded_file, caption="업로드된 이미지 미리보기", width=200)
+                # O(1) 초고속 이미지 압축 로직
+                with st.spinner("이미지 최적화 중..."):
+                    optimized_img = optimize_image(uploaded_file)
+                st.session_state["uploaded_img"] = optimized_img
+                st.image(optimized_img, caption="업로드된 이미지 미리보기 (최적화 완료)", width=200)
         except Exception as img_err:
             st.error(f"이미지 업로드 중 오류 발생: {img_err}. 다시 시도해주세요.")
 
