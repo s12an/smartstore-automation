@@ -463,7 +463,7 @@ def render_dashboard():
         st.warning("⚠️ AI 설정이 부재하여 Zimage 모드로 자동 가동 중입니다. (무제한)")
 
     st.sidebar.markdown("---")
-    # 실시간 접속 주소 (클릭 가능한 링크)
+    # 실시간 접속 주소 (클릭 가능한 링크) - 사이드바에만
     live_url = "https://smartstore-automation.streamlit.app/"
     st.sidebar.markdown(
         f"""
@@ -475,10 +475,14 @@ def render_dashboard():
         """,
         unsafe_allow_html=True
     )
-    ref_urls = st.sidebar.text_area("🔗 크롤링 대상 주소 (URL)", placeholder="예: https://smartstore.naver.com/... \nAI가 이곳으로 접속하여 정보를 스크래핑합니다.")
 
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
+        ref_urls = st.text_area(
+            "🔗 참고 URL (크롤링 대상 주소)",
+            placeholder="예: https://smartstore.naver.com/...\nAI가 이 주소로 접속해 제품 정보와 이미지를 수집합니다.",
+            height=90
+        )
         
         try:
             uploaded_file = st.file_uploader("대표 이미지 업로드 (선택)", type=["jpg", "png", "jpeg"])
