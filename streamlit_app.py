@@ -463,15 +463,29 @@ def render_dashboard():
         st.warning("⚠️ AI 설정이 부재하여 Zimage 모드로 자동 가동 중입니다. (무제한)")
 
     st.sidebar.markdown("---")
-    # 실시간 접속 주소 - link_button으로 클릭 즉시 이동 (모바일도 실제 작동)
-    live_url = "https://smartstore-automation.streamlit.app/"
-    st.sidebar.markdown("#### 🌐 외부 공유 주소")
-    st.sidebar.link_button(
-        "👉 클릭 → 앱 바로 열기",
-        live_url,
-        use_container_width=True,
-    )
-    st.sidebar.caption(f"📋 주소 복사용: `{live_url}`")
+    st.sidebar.markdown("#### 🌐 앱 공유 주소")
+    # Streamlit Cloud 배포 시 자동으로 실제 URL 감지
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        ctx = get_script_run_ctx()
+        session_id = ctx.session_id if ctx else ""
+        # 실제 배포 환경에서는 st.query_params를 통해 호스트 확인
+        host = st.context.headers.get("host", "") if hasattr(st, 'context') else ""
+        if host and "localhost" not in host:
+            detected_url = f"https://{host}"
+        else:
+            detected_url = None
+    except:
+        detected_url = None
+
+    if detected_url:
+        st.sidebar.success(f"🔗 {detected_url}")
+        st.sidebar.link_button("👉 클릭 → 앱 바로 열기", detected_url, use_container_width=True)
+        st.sidebar.caption("모바일 쮜구에서 악세스 가능 ↑")
+    else:
+        st.sidebar.info("📱 브라우저 주소청에서\n현재 URL을 복사하세요")
+        st.sidebar.caption("로컈(테스트) 환경 중 \
+\n실 배포 주소는 Streamlit Cloud\n대시보드에서 확인 후\n저한테 알려주세요!")
 
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
