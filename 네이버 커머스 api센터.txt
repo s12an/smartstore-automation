@@ -1,3 +1,0 @@
-애플리케이션 아이디:75PtEDvI5aYLPcWjPbNLYZ
-애플리케이션 비번:$2a$04$Ijc6OjUJiZK8.IAjjjC/Be
-API호출 IP:210.113.127.219
