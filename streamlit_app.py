@@ -166,6 +166,21 @@ def image_to_base64(image_bytesio):
     image_bytesio.seek(0)
     return base64.b64encode(image_bytesio.read()).decode('utf-8')
 
+def generate_studio_shot(api_key, prod_name):
+    try:
+        client = OpenAI(api_key=api_key)
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=f"Professional cosmetic studio photography. Close-up macro shot of the texture, glowing skin, or elegant elements related to '{prod_name}'. ABSOLUTELY NO human faces or heads. Only show hands, collarbone, skin texture, or elegant liquid smears. 8k resolution, photorealistic, highly detailed, premium cosmetic luxury advertising style.",
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        return response.data[0].url
+    except Exception as e:
+        print(f"DALL-E 3 Error: {e}")
+        return None
+
 def generate_detail_page_openai(api_key, prod_name, ref_urls, image_b64=None):
     try:
         client = OpenAI(api_key=api_key)
@@ -375,7 +390,16 @@ def render_dashboard():
                         if res:
                             st.session_state["last_generated"] = res
                             st.session_state["last_prod_name"] = prod_name
-                            st.success("✅ 시각 분석 및 생성이 완료되었습니다!")
+                            
+                            # Add DALL-E 3 Studio shot generation with user feedback
+                            with st.spinner("전문가급 스튜디오 매크로 컷 생성 중 (DALL-E 3, 약 10초 소요)..."):
+                                okey = fetch_api_key("openai")
+                                if okey:
+                                    st.session_state["studio_image_url"] = generate_studio_shot(okey, prod_name)
+                                else:
+                                    st.session_state["studio_image_url"] = None
+
+                            st.success("✅ 고급 기획 및 스튜디오 컷 생성이 완료되었습니다!")
                         else:
                             st.error("생성에 실패했습니다. 다시 시도해주세요.")
                     except Exception as gen_err:
@@ -394,16 +418,23 @@ def render_dashboard():
 
         # Build massive HTML string to embed via true iFrame
         html_blocks = []
+        studio_url = st.session_state.get("studio_image_url")
+        
         for i, sec in enumerate(sections):
             tag = sec['tag'].upper()
             title = sec['title'].replace('"', '&quot;')
             body = sec['body'].replace('\n', '<br>')
             
+            # Use uploaded image for HERO, use studio image for alternate blocks
+            current_img_src = img_src
+            if i > 0 and studio_url and i % 2 == 1:
+                current_img_src = studio_url
+            
             # CSS Patterns based on sections
             if i % 3 == 0 or "HERO" in tag:
                 # HERO Pattern: Full background overlay
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; justify-content: flex-end; padding: 80px; box-sizing: border-box; background: url('{img_src}') center/cover no-repeat; margin-bottom: 20px;">
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; justify-content: flex-end; padding: 80px; box-sizing: border-box; background: url('{current_img_src}') center/cover no-repeat; margin-bottom: 20px;">
                     <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);"></div>
                     <div style="position: relative; z-index: 10;">
                         <span style="display:inline-block; padding:8px 16px; background:#FFD700; color:#000; font-weight:800; font-size:24px; border-radius:4px; margin-bottom:20px;">{tag}</span>
@@ -421,13 +452,13 @@ def render_dashboard():
                         <h2 style="color: #222; font-size: 48px; font-weight: 800; line-height: 1.3; margin: 0 0 40px 0;">{title}</h2>
                         <div style="color: #555; font-size: 24px; line-height: 1.8; font-weight: 400; word-break: keep-all;">{body}</div>
                     </div>
-                    <div style="flex:1; background: url('{img_src}') center/cover no-repeat;"></div>
+                    <div style="flex:1; background: url('{current_img_src}') center/cover no-repeat;"></div>
                 </div>
                 """
             else:
                 # STATS/INFO Pattern (Glassmorphism overlap)
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; align-items: center; justify-content: center; background: url('{img_src}') top/cover no-repeat; margin-bottom: 20px;">
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; align-items: center; justify-content: center; background: url('{current_img_src}') top/cover no-repeat; margin-bottom: 20px;">
                     <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);"></div>
                     <div style="position: relative; z-index: 10; width: 85%; background: rgba(255,255,255,0.95); padding: 80px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align:center;">
                         <div style="display:inline-block; padding:6px 20px; border:2px solid #222; color:#222; font-weight:800; font-size:20px; border-radius:30px; margin-bottom:30px;">{tag}</div>
