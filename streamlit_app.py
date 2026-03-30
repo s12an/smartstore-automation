@@ -385,7 +385,11 @@ def render_dashboard():
 
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
-        ref_urls = st.text_area("참고 URL/텍스트", placeholder="상세페이지 기획의 근거가 될 정보를 입력하세요.")
+        
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🔗 딥러닝 스크래핑 제어")
+        st.sidebar.caption("여기에 적힌 주소(URL)로 AI가 곧바로 들어가\n제품 정보를 읽어오고 재창조합니다.")
+        ref_urls = st.sidebar.text_area("참고 URL 입력", placeholder="예: https://smartstore.naver.com/... ")
         
         try:
             uploaded_file = st.file_uploader("대표 이미지 업로드 (선택)", type=["jpg", "png", "jpeg"])
