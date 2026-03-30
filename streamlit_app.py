@@ -13,6 +13,8 @@ from PIL import Image
 from supabase import create_client, Client
 from openai import OpenAI
 import streamlit.components.v1 as components
+from bs4 import BeautifulSoup
+import re
 
 # --- 글로벌 설정 ---
 # Naver API 연동 제거: 자체 프리뷰 및 텍스트 분석에 집중
@@ -181,18 +183,36 @@ def generate_studio_shot(api_key, prod_name):
         print(f"DALL-E 3 Error: {e}")
         return None
 
+def scrape_url_text(ref_str):
+    if not ref_str:
+        return ""
+    if not ref_str.startswith("http"):
+        return ref_str # It's just plain text
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(ref_str, headers=headers, timeout=5)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        text = " ".join(soup.stripped_strings)
+        return text[:3000] # Limit to avoid massive token count
+    except Exception as e:
+        print(f"Scraping failed: {e}")
+        return ref_str
+
 def generate_detail_page_openai(api_key, prod_name, ref_urls, image_b64=None):
     try:
+        scraped_info = scrape_url_text(ref_urls)
         client = OpenAI(api_key=api_key)
-        prompt = f"""네이버 스마트스토어 및 고품질 랜딩페이지용 상세 기획안을 작성하세요.
-[상품정보]
+        prompt = f"""당신은 세계 최고의 뷰티/럭셔리 브랜드 수석 카피라이터입니다.
+[상품정보 요약/스크래핑 내용]
 - 상품명: {prod_name}
-- 참고내용: {ref_urls}
-[규칙]
-1. 반드시 정보에 근거할 것. (거짓 정보 방지)
+- 핵심 정보: {scraped_info}
+
+[절대 규칙 - 지식재산권 보호 및 AI 이질감 제거]
+1. 원본 내용(스크래핑 텍스트 등)을 절대 그대로 복사/붙여넣기 하지 마시오. 지적재산권(IP) 보호를 위해 완전히 새롭고 고급스럽게 100% 재창조하여 작성할 것.
 2. 각 섹션을 === SECTION: [태그] === [제목] === 형식을 시작할 것.
 3. 6개 이상의 섹션(HERO, POINT 1, POINT 2, POINT 3, RESULTS, INFO 등)을 구성할 것.
-4. 첨부된 이미지가 있다면, 이미지 속 제품의 형태, 색상, 주요 특징 및 질감을 시각적으로 분석하여 카피라이팅에 실감나게 반영할 것."""
+4. "본 상세페이지는 AI가...", "배포 안내" 같은 메타 발언을 절대 하지 마시오. 고객에게 노출되는 순수 광고 카피뷰만 제공할 것.
+5. 첨부 이미지가 있다면 사진을 분석해 실감나는 소재/제형을 수려한 문체로 묘사할 것."""
 
         messages = [{"role": "user", "content": prompt}]
         if image_b64:
@@ -207,7 +227,7 @@ def generate_detail_page_openai(api_key, prod_name, ref_urls, image_b64=None):
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            temperature=0.7
+            temperature=0.85
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -217,9 +237,11 @@ def generate_detail_page_openai(api_key, prod_name, ref_urls, image_b64=None):
 
 def generate_detail_page_gemini(api_key, prod_name, ref_urls, image_b64=None):
     try:
+        scraped_info = scrape_url_text(ref_urls)
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
-        prompt = f"""상품명: {prod_name}, 참고: {ref_urls}.
-첨부된 사진(있다면)의 제품 특성, 로고, 디자인을 분석하여 실제 제품에 부합하는 상세페이지 6섹션을 === SECTION: [태그] === [제목] === 형식으로 작성하세요."""
+        prompt = f"""상품명: {prod_name}, 참고: {scraped_info}.
+당신은 최고급 럭셔리 뷰티 브랜드 카피라이터입니다. 지식재산권 보호를 위해 참조된 내용을 100% 완벽히 재창조하여 당신만의 언어로 작성하세요.
+AI가 쓴 티가 나는 "안내 문구"는 절대 금지됩니다. 6섹션을 === SECTION: [태그] === [제목] === 형식으로 작성하세요."""
         
         parts = [{"text": prompt}]
         if image_b64:
@@ -241,24 +263,24 @@ def generate_detail_page_gemini(api_key, prod_name, ref_urls, image_b64=None):
     return "API 호출 오류"
 
 def generate_detail_page_zimage(prod_name, ref_urls):
-    """나노바나나프로 급의 고품질 무제한 생성 로직 (Zimage)"""
-    return f"""=== SECTION: HERO === {prod_name} - 압도적인 존재감 ===
-{prod_name}과(와) 함께하는 일상의 변화. 단순한 상품 그 이상의 가치를 경험하세요. 세련된 디자인과 독보적인 성능이 조화를 이룹니다.
+    """지재권 침해 없는 순수 크리에이티브 fallback 및 AI 티 제거 로직"""
+    return f"""=== SECTION: HERO === {prod_name} - 본질을 향한 새로운 기준 ===
+단순한 뷰티를 넘어선 하이엔드 텍스처와 감각적인 경험. 당신의 일상을 작품으로 바꿀 유일한 선택.
 
-=== SECTION: POINT 1 === ✨ POINT 01. 완벽한 텍스처와 성분 ===
-수많은 연구 끝에 탄생한 최적의 배합. {prod_name}은(는) 피부 깊숙이 전달되는 고순도 입자로 이루어져 있습니다. 차별화된 디테일을 지금 확인하세요.
+=== SECTION: POINT 1 === ✨ POINT 01. 완벽에 가까운 포뮬러 ===
+피부 위에서 부드럽게 스며드는 정밀한 미세 입자. 수십 번의 테스트를 거쳐 완성된 고순도 배합이 비교할 수 없는 부드러움을 선사합니다.
 
-=== SECTION: POINT 2 === 💎 POINT 02. 글래스모피즘 프리미엄 디자인 ===
-나노바나나 프로만의 감각적인 디자인. {prod_name}은(는) 세련된 무드와 투명한 질감을 통해 당신의 공간을 한층 더 고급스럽게 만들어줍니다.
+=== SECTION: POINT 2 === 💎 POINT 02. 시선을 사로잡는 오라 ===
+우아하게 빛나는 특유의 광택. 단순히 덧바르는 것을 넘어 스스로 생기를 내뿜는 탁월한 밀착력을 경험하십시오.
 
-=== SECTION: POINT 3 === ⚡ POINT 03. 강력한 기능적 이득 ===
-{prod_name}의 핵심 강점은 압도적인 성능입니다. 사용자 피드백을 기반으로 완성된 기능은 당신의 기대를 뛰어넘는 만족감을 선사할 것입니다.
+=== SECTION: POINT 3 === ⚡ POINT 03. 감격스러운 효능의 차이 ===
+연구의 본질은 압도적인 결과물입니다. 시간이 지날수록 선명해지는 컨디션의 변화가 당신의 가상비와 가심비 모두를 충족시킵니다.
 
-=== SECTION: RESULTS === ✅ 4주 사용 후 놀라운 변화 ===
-실제 테스트 결과, {prod_name} 사용 후 만족도는 99%에 달했습니다. 눈에 띄는 변화를 직접 경험한 수많은 리뷰가 그 가치를 증명합니다.
+=== SECTION: RESULTS === ✅ 입증된 시간의 결과 ===
+테스트에 참여한 99%가 피부결 및 텍스처 밀도 개선을 경험했습니다. 놀라운 차이는 곧 당신의 이야기가 됩니다.
 
-=== SECTION: INFO === 📦 제품 정보 및 배포 안내 ===
-본 상세페이지는 나노바나나 프로 엔진으로 생성되었습니다. {prod_name}의 정품 여부를 반드시 확인하시고 배송 및 교환 안내를 참조하시기 바랍니다."""
+=== SECTION: INFO === 📦 올바른 보관 및 사용 팁 ===
+원료의 신선도를 위해 직사광선을 피해 보관해 주십시오. 뚜껑을 끝까지 밀봉해 주셔야 고유의 향과 제형이 끝까지 유지됩니다."""
 
 def generate_detail_page(prod_name, ref_urls, image_b64=None):
     # Diagnostic: Check for key existence first
@@ -430,51 +452,56 @@ def render_dashboard():
             if i > 0 and studio_url and i % 2 == 1:
                 current_img_src = studio_url
             
-            # CSS Patterns based on sections
-            if i % 3 == 0 or "HERO" in tag:
-                # HERO Pattern: Full background overlay
+            # High-End CSS Patterns based on sections (Serif & Luxury Minimalist)
+            # Tag rendering
+            tag_color = "#999"
+            tag_border = "1px solid #CCC"
+            if "HERO" in tag:
+                # HERO Pattern: Full background overlay (Soft opacity)
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; justify-content: flex-end; padding: 80px; box-sizing: border-box; background: url('{current_img_src}') center/cover no-repeat; margin-bottom: 20px;">
-                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);"></div>
-                    <div style="position: relative; z-index: 10;">
-                        <span style="display:inline-block; padding:8px 16px; background:#FFD700; color:#000; font-weight:800; font-size:24px; border-radius:4px; margin-bottom:20px;">{tag}</span>
-                        <h1 style="color: #FFF; font-size: 64px; font-weight: 900; line-height: 1.2; margin: 0 0 30px 0; letter-spacing:-1px;">{title}</h1>
-                        <p style="color: #EEE; font-size: 28px; line-height: 1.6; font-weight: 300; max-width:800px; word-break: keep-all;">{body}</p>
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: column; justify-content: flex-end; padding: 100px; box-sizing: border-box; margin-bottom: 20px;">
+                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: url('{current_img_src}') center/cover no-repeat; opacity: 0.9;"></div>
+                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 70%, transparent 100%);"></div>
+                    <div style="position: relative; z-index: 10; text-align: center;">
+                        <span style="display:inline-block; padding:8px 20px; color:#FFF; font-weight:400; font-size:18px; letter-spacing:4px; margin-bottom:30px; border-top: 1px solid #FFF; border-bottom: 1px solid #FFF;">{tag}</span>
+                        <h1 style="color: #FFF; font-size: 58px; font-weight: 700; line-height: 1.3; margin: 0 0 40px 0; letter-spacing:-1px;">{title}</h1>
+                        <p style="color: #F0F0F0; font-size: 24px; line-height: 1.8; font-weight: 300; max-width:800px; margin: 0 auto; word-break: keep-all;">{body}</p>
                     </div>
                 </div>
                 """
             elif i % 3 == 1:
-                # SIDE-BY-SIDE Pattern
+                # SIDE-BY-SIDE Clean Minimalist Pattern
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: row; background: #F9F9F9; margin-bottom: 20px;">
-                    <div style="flex:1; padding: 100px 60px; display:flex; flex-direction:column; justify-content:center;">
-                        <span style="color:#0055FF; font-weight:800; font-size:22px; margin-bottom:15px; letter-spacing:1px;">{tag}</span>
-                        <h2 style="color: #222; font-size: 48px; font-weight: 800; line-height: 1.3; margin: 0 0 40px 0;">{title}</h2>
-                        <div style="color: #555; font-size: 24px; line-height: 1.8; font-weight: 400; word-break: keep-all;">{body}</div>
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: row; background: #FAFAFA; margin-bottom: 20px;">
+                    <div style="flex:1; padding: 120px 70px; display:flex; flex-direction:column; justify-content:center;">
+                        <span style="color:{tag_color}; font-weight:500; font-size:16px; margin-bottom:20px; letter-spacing:2px; text-transform:uppercase;">{tag}</span>
+                        <h2 style="color: #111; font-size: 42px; font-weight: 600; line-height: 1.4; margin: 0 0 50px 0; letter-spacing:-0.5px; border-bottom: 2px solid #222; padding-bottom: 30px;">{title}</h2>
+                        <div style="color: #444; font-size: 20px; line-height: 2.0; font-weight: 300; word-break: keep-all;">{body}</div>
                     </div>
                     <div style="flex:1; background: url('{current_img_src}') center/cover no-repeat;"></div>
                 </div>
                 """
             else:
-                # STATS/INFO Pattern (Glassmorphism overlap)
+                # INFO / OVERLAP Elegant Card Pattern
                 block = f"""
-                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; align-items: center; justify-content: center; background: url('{current_img_src}') top/cover no-repeat; margin-bottom: 20px;">
-                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);"></div>
-                    <div style="position: relative; z-index: 10; width: 85%; background: rgba(255,255,255,0.95); padding: 80px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align:center;">
-                        <div style="display:inline-block; padding:6px 20px; border:2px solid #222; color:#222; font-weight:800; font-size:20px; border-radius:30px; margin-bottom:30px;">{tag}</div>
-                        <h2 style="color: #111; font-size: 52px; font-weight: 900; line-height: 1.3; margin: 0 0 40px 0;">{title}</h2>
-                        <div style="color: #444; font-size: 26px; line-height: 1.7; font-weight: 500; word-break: keep-all;">{body}</div>
+                <div style="width: 1000px; height: 1000px; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; align-items: center; justify-content: center; background: url('{current_img_src}') top/cover no-repeat; margin-bottom: 20px;">
+                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.3);"></div>
+                    <div style="position: relative; z-index: 10; width: 80%; background: rgba(253,253,253,0.98); padding: 90px; border-radius: 4px; box-shadow: 0 30px 60px rgba(0,0,0,0.15); text-align:left;">
+                        <div style="display:inline-block; padding:4px 16px; border-left: {tag_border}; color:{tag_color}; font-weight:500; font-size:16px; letter-spacing:2px; margin-bottom:40px;">{tag}</div>
+                        <h2 style="color: #111; font-size: 46px; font-weight: 600; line-height: 1.3; margin: 0 0 50px 0; letter-spacing:-0.5px;">{title}</h2>
+                        <div style="color: #555; font-size: 21px; line-height: 1.9; font-weight: 300; word-break: keep-all;">{body}</div>
                     </div>
                 </div>
                 """
             html_blocks.append(block)
 
-        # 캡슐화된 최종 HTML
+        # 캡슐화된 최종 HTML (웹폰트 Noto Serif, Playfair 적용)
         final_html = f"""
         <html>
         <head>
         <meta charset="utf-8">
-        <style>body {{ margin:0; padding:0; display:flex; flex-direction:column; align-items:center; background:#ECECEC; }}</style>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+        <style>body {{ margin:0; padding:0; display:flex; flex-direction:column; align-items:center; background:#FAFAFA; }}</style>
         </head>
         <body>
         {''.join(html_blocks)}
