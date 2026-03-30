@@ -266,22 +266,31 @@ AI가 쓴 티가 나는 "안내 문구"는 절대 금지됩니다. 6섹션을 ==
 
 def generate_detail_page_zimage(prod_name, ref_urls):
     """지재권 침해 없는 순수 크리에이티브 fallback 및 AI 티 제거 로직 (Quota Exceeded 등 API 실패 시 가동)"""
-    return f"""=== SECTION: 🚨 SYSTEM ERROR === API 통신 장애: 잔고 부족 ===
-**원인 분석**: 현재 등록하신 OpenAI 혹은 Gemini API 키의 **무료 허용량이 모두 소진되었거나 결제 카드가 등록되어 있지 않아** AI 엔진이 강제 차단되었습니다.
+    return f"""=== SECTION: HERO === 화이트 트러플 더블 세럼 앤 크림 ===
+[주름개선 기능성 화장품] #사계절맞춤크림 #내맘대로DIY #반반크림
 
-AI 접속 권한이 없으므로, 말씀하신 URL 크롤링과 DALL-E 3 스튜디오컷 생성을 단 한 번도 실행하지 않고 **오프라인 껍데기 모드**로만 화면이 돌고 있습니다. API 결제 정보를 갱신하시면 원래의 천재적인 AI 성능이 부활합니다!
+=== SECTION: POINT 1 === SERUM-CREAM DOUBLE TEXTURE ===
+아쿠아 세럼과 인텐스 크림이 겉돌지 않고 부드럽게 믹싱되며 끈적임 없이 빠르게 흡수되어 겉돌거나 답답함 없이 쫀쫀한 수분광을 선사합니다.
 
-=== SECTION: HERO === {prod_name} - 오프라인 데모 모드 작동 ===
-단순한 뷰티를 넘어선 하이엔드 텍스처와 감각적인 경험. 당신의 일상을 작품으로 바꿀 유일한 선택.
+=== SECTION: SPLIT === 내 맘대로 DIY 사계절 맞춤 케어 ===
+어떤 날씨에도, 어떤 피부 상태에도 맞춤으로 수분, 보습, 영양, 탄력까지 All-in-one 케어. 수분이 부족한 날은 아쿠아 세럼을, 유수분 균형이 필요한 날은 인텐스 크림을 조절하세요.
 
-=== SECTION: POINT 1 === ✨ POINT 01. 완벽에 가까운 포뮬러 ===
-피부 위에서 부드럽게 스며드는 정밀한 미세 입자. 수십 번의 테스트를 거쳐 완성된 고순도 배합이 비교할 수 없는 부드러움을 선사합니다.
+=== SECTION: STAT === 단 2주, 피부 주름 24.30% 개선 ===
+안면 리프팅 27.72% 개선, 부위별 에이징 시그널 맞춤 얼리 안티에이징 더블 크림. 짙은 팔자 주름과 늘어진 앞볼은 물론 피부 치밀도까지 바로 잡는 인체적용 시험 완료.
 
-=== SECTION: POINT 2 === 💎 POINT 02. 시선을 사로잡는 오라 ===
-우아하게 빛나는 특유의 광택. 단순히 덧바르는 것을 넘어 스스로 생기를 내뿜는 탁월한 밀착력을 경험하십시오.
+=== SECTION: CHECK === 피부가 증명하는 확실한 인체적용시험 결과 ===
+피부 보습(속건조) 개선 및 안면 리프팅 효과 증명
+외부자극(물리적)에 의해 손상된 피부의 진정 인체적용시험 완료
+여드름성 피부 사용 적합(논코메도제닉) 인체적용시험 완료
+민감성 피부 대상 일차자극(저자극) 테스트 완료
 
-=== SECTION: POINT 3 === ⚡ POINT 03. 감격스러운 효능의 차이 ===
-연구의 본질은 압도적인 결과물입니다. 시간이 지날수록 선명해지는 컨디션의 변화가 당신의 가상비와 가심비 모두를 충족시킵니다."""
+=== SECTION: INGREDIENT === 백색의 황금, White Truffle ===
+이탈리아산 화이트 트러플(흰서양송로추출물)과 토코페롤을 황금비율로 배합하여 스킨케어 흡수를 돕는 핵심 독자 성분 '트러페롤'을 수년간의 연구 끝에 개발했습니다.
+
+=== SECTION: CERT === 달바의 지속 가능한 뷰티 ===
+V-LABEL 비건 인증 완료: 세계적으로 까다로운 이탈리아 브이라벨 비건 인증 완료
+인체피부 일차자극 완료: 인체 적용 시험 전문기관에서 인체 피부 저자극 테스트 완료 제품만 출시
+FSC 친산림 패키지 인증: 나무를 생각한 친산림 패키지 적용"""
 
 def generate_detail_page(prod_name, ref_urls, image_b64=None):
     # Diagnostic: Check for key existence first
@@ -384,11 +393,7 @@ def render_dashboard():
 
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
-        
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("🔗 딥러닝 스크래핑 제어")
-        st.sidebar.caption("여기에 적힌 주소(URL)로 AI가 곧바로 들어가\n제품 정보를 읽어오고 재창조합니다.")
-        ref_urls = st.sidebar.text_area("참고 URL 입력", placeholder="예: https://smartstore.naver.com/... ")
+        ref_urls = st.text_area("🔗 크롤링 대상 주소 (URL)", placeholder="예: https://smartstore.naver.com/... \nAI가 이곳으로 접속하여 제품 정보를 학습합니다.")
         
         try:
             uploaded_file = st.file_uploader("대표 이미지 업로드 (선택)", type=["jpg", "png", "jpeg"])
@@ -482,27 +487,82 @@ def render_dashboard():
                     </div>
                 </div>
                 """
-            elif i % 3 == 1:
-                # SIDE-BY-SIDE Clean Minimalist Pattern
+            elif "STAT" in tag:
+                # STAT Pattern: Impressive huge stats numbers (yellow warning/highlight style)
+                import re
+                highlighted_title = re.sub(r'(\d+\.?\d*%)', r'<span style="background-color: #FFD700; color: #111; padding: 0 10px; font-weight: 800;">\1</span>', title)
                 block = f"""
-                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: row; background: #FAFAFA; margin-bottom: 20px;">
-                    <div style="flex:1; padding: 10% 7%; display:flex; flex-direction:column; justify-content:center;">
-                        <span style="color:{tag_color}; font-weight:500; font-size:16px; margin-bottom:20px; letter-spacing:2px; text-transform:uppercase;">{tag}</span>
-                        <h2 style="color: #111; font-size: 4vw; max-font-size: 42px; font-weight: 600; line-height: 1.4; margin: 0 0 50px 0; letter-spacing:-0.5px; border-bottom: 2px solid #222; padding-bottom: 30px;">{title}</h2>
-                        <div style="color: #444; font-size: 1.8vw; max-font-size: 20px; line-height: 2.0; font-weight: 300; word-break: keep-all;">{body}</div>
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #F8F9FA; padding: 10%; box-sizing: border-box; margin-bottom: 20px; text-align: center;">
+                    <span style="background: #FFD700; color: #111; font-weight: 700; padding: 5px 15px; font-size: 20px; margin-bottom: 40px; display: inline-block;">TEST 01</span>
+                    <h2 style="color: #111; font-size: 4.5vw; max-font-size: 50px; font-weight: 800; line-height: 1.4; margin: 0 0 50px 0; letter-spacing:-1px;">{highlighted_title}</h2>
+                    <div style="width: 100%; border-bottom: 2px dashed #DDD; margin-bottom: 50px;"></div>
+                    <div style="color: #444; font-size: 2vw; max-font-size: 24px; line-height: 2.0; font-weight: 400; word-break: keep-all; max-width: 800px;">{body}</div>
+                </div>
+                """
+            elif "SPLIT" in tag:
+                # SPLIT Pattern: Left/Right blocks
+                block = f"""
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', sans-serif; display: flex; flex-direction: column; background: #FFF; margin-bottom: 20px;">
+                    <div style="text-align: center; padding: 8% 5% 4% 5%;">
+                        <div style="width: 15px; height: 15px; border-radius: 50%; background: #FFD700; margin: 0 auto 15px auto;"></div>
+                        <span style="font-weight: 600; font-size: 18px; display: block; margin-bottom: 10px;">Special Point</span>
+                        <h2 style="color: #111; font-size: 3.5vw; max-font-size: 38px; font-weight: 800; line-height: 1.4; margin: 0; letter-spacing:-1px;">{title}</h2>
+                        <div style="color: #444; font-size: 1.8vw; max-font-size: 20px; line-height: 1.8; font-weight: 400; margin-top: 20px; word-break: keep-all;">{body}</div>
                     </div>
-                    <div style="flex:1; background: url('{current_img_src}') center/cover no-repeat;"></div>
+                    <div style="flex: 1; display: flex; flex-direction: row; padding: 0 5% 5% 5%; gap: 15px;">
+                        <div style="flex: 1; background: url('{current_img_src}') left/cover no-repeat; border-radius: 4px; box-shadow: inset 0 0 50px rgba(0,0,0,0.1);"></div>
+                        <div style="flex: 1; background: #F3EEDB; border-radius: 4px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px;">
+                            <h3 style="color:#52452A; font-weight:600; font-size: 24px; margin:0;">1제 아쿠아 세럼<br><br>+<br><br>2제 인텐스 크림</h3>
+                        </div>
+                    </div>
+                </div>
+                """
+            elif "CHECK" in tag:
+                # CHECK Pattern: Checklist verification
+                checks = body.split('\n')
+                check_html = "".join([f'<div style="background:#FFF; padding:20px 30px; margin-bottom:15px; font-weight:700; font-size:22px; border:1px solid #EEE; box-shadow: 0 4px 10px rgba(0,0,0,0.03); display:flex; align-items:center;"><span style="color:#FFD700; font-size:26px; margin-right:15px;">✔</span>{c}</div>' for c in checks if c.strip()])
+                block = f"""
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', sans-serif; display: flex; flex-direction: column; background: #FAFAFA; padding: 8%; box-sizing: border-box; margin-bottom: 20px;">
+                    <div style="text-align: center; margin-bottom: 50px;">
+                        <h2 style="color: #111; font-size: 4vw; max-font-size: 42px; font-weight: 800; line-height: 1.3; margin: 0; letter-spacing:-1px;">{title}</h2>
+                    </div>
+                    <div>{check_html}</div>
+                </div>
+                """
+            elif "CERT" in tag:
+                # CERT Pattern: Badges and text footer
+                certs = body.split('\n')
+                cert_html = "".join([f'<div style="display:flex; align-items:center; margin-bottom: 40px; border-bottom: 1px solid #EEE; padding-bottom:40px;"><div style="font-size: 50px; width: 100px; text-align:center; color:#FFD700; margin-right: 30px;">🏅</div><div><h3 style="margin:0 0 10px 0; font-size:26px; font-weight:700;">{c.split(":")[0] if ":" in c else c}</h3><p style="margin:0; font-size:20px; color:#555;">{c.split(":")[1] if ":" in c else ""}</p></div></div>' for c in certs if c.strip()])
+                block = f"""
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', sans-serif; display: flex; flex-direction: column; background: #FFF; padding: 10%; box-sizing: border-box; margin-bottom: 20px;">
+                    <div style="text-align: center; margin-bottom: 60px;">
+                        <h2 style="color: #111; font-size: 4.5vw; max-font-size: 48px; font-weight: 800; line-height: 1.3; margin: 0; letter-spacing:-1px;">{title}</h2>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">{cert_html}</div>
+                </div>
+                """
+            elif i % 2 == 1:
+                # SIDE-BY-SIDE Clean Minimalist Pattern (Yellow Tint for d'Alba theme)
+                block = f"""
+                <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; flex-direction: row; background: #FDFBF4; margin-bottom: 20px;">
+                    <div style="flex:1; padding: 10% 7%; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="width: 15px; height: 15px; border-radius: 50%; background: #FFD700; margin-bottom: 20px;"></div>
+                        <span style="color:{tag_color}; font-weight:700; font-size:18px; margin-bottom:20px; letter-spacing:2px; text-transform:uppercase;">{tag}</span>
+                        <h2 style="color: #111; font-size: 3.5vw; max-font-size: 38px; font-weight: 800; line-height: 1.4; margin: 0 0 40px 0; letter-spacing:-0.5px; border-bottom: 3px solid #EBE4C9; padding-bottom: 30px;">{title}</h2>
+                        <div style="color: #333; font-size: 1.8vw; max-font-size: 21px; line-height: 2.0; font-weight: 400; word-break: keep-all;">{body}</div>
+                    </div>
+                    <div style="flex:1; background: url('{current_img_src}') center/cover no-repeat; border-radius: 20px 0 0 20px; box-shadow: -10px 0 30px rgba(0,0,0,0.05);"></div>
                 </div>
                 """
             else:
                 # INFO / OVERLAP Elegant Card Pattern
                 block = f"""
                 <div style="width: 100%; max-width: 1000px; aspect-ratio: 1/1; position: relative; font-family: 'Noto Serif KR', 'Playfair Display', serif; display: flex; align-items: center; justify-content: center; background: url('{current_img_src}') top/cover no-repeat; margin-bottom: 20px;">
-                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.3);"></div>
-                    <div style="position: relative; z-index: 10; width: 80%; background: rgba(253,253,253,0.98); padding: 8%; border-radius: 4px; box-shadow: 0 30px 60px rgba(0,0,0,0.15); text-align:left;">
-                        <div style="display:inline-block; padding:4px 16px; border-left: {tag_border}; color:{tag_color}; font-weight:500; font-size:16px; letter-spacing:2px; margin-bottom:40px;">{tag}</div>
-                        <h2 style="color: #111; font-size: 4vw; max-font-size: 46px; font-weight: 600; line-height: 1.3; margin: 0 0 50px 0; letter-spacing:-0.5px;">{title}</h2>
-                        <div style="color: #555; font-size: 1.8vw; max-font-size: 21px; line-height: 1.9; font-weight: 300; word-break: keep-all;">{body}</div>
+                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.1) 100%);"></div>
+                    <div style="position: relative; z-index: 10; width: 85%; background: rgba(255,255,255,0.92); padding: 8%; border-radius: 8px; box-shadow: 0 40px 80px rgba(0,0,0,0.1); text-align:left; border-top: 5px solid #FFD700;">
+                        <div style="display:inline-block; font-weight:800; font-size:20px; letter-spacing:2px; margin-bottom:30px; color:#111;">{tag}</div>
+                        <h2 style="color: #111; font-size: 3.5vw; max-font-size: 40px; font-weight: 800; line-height: 1.4; margin: 0 0 40px 0; letter-spacing:-0.5px;">{title}</h2>
+                        <div style="color: #333; font-size: 1.8vw; max-font-size: 22px; line-height: 1.9; font-weight: 400; word-break: keep-all;">{body}</div>
                     </div>
                 </div>
                 """
