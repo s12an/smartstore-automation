@@ -265,8 +265,13 @@ AI가 쓴 티가 나는 "안내 문구"는 절대 금지됩니다. 6섹션을 ==
     return "API 호출 오류"
 
 def generate_detail_page_zimage(prod_name, ref_urls):
-    """지재권 침해 없는 순수 크리에이티브 fallback 및 AI 티 제거 로직"""
-    return f"""=== SECTION: HERO === {prod_name} - 본질을 향한 새로운 기준 ===
+    """지재권 침해 없는 순수 크리에이티브 fallback 및 AI 티 제거 로직 (Quota Exceeded 등 API 실패 시 가동)"""
+    return f"""=== SECTION: 🚨 SYSTEM ERROR === API 통신 장애: 잔고 부족 ===
+**원인 분석**: 현재 등록하신 OpenAI 혹은 Gemini API 키의 **무료 허용량이 모두 소진되었거나 결제 카드가 등록되어 있지 않아** AI 엔진이 강제 차단되었습니다.
+
+AI 접속 권한이 없으므로, 말씀하신 URL 크롤링과 DALL-E 3 스튜디오컷 생성을 단 한 번도 실행하지 않고 **오프라인 껍데기 모드**로만 화면이 돌고 있습니다. API 결제 정보를 갱신하시면 원래의 천재적인 AI 성능이 부활합니다!
+
+=== SECTION: HERO === {prod_name} - 오프라인 데모 모드 작동 ===
 단순한 뷰티를 넘어선 하이엔드 텍스처와 감각적인 경험. 당신의 일상을 작품으로 바꿀 유일한 선택.
 
 === SECTION: POINT 1 === ✨ POINT 01. 완벽에 가까운 포뮬러 ===
@@ -276,13 +281,7 @@ def generate_detail_page_zimage(prod_name, ref_urls):
 우아하게 빛나는 특유의 광택. 단순히 덧바르는 것을 넘어 스스로 생기를 내뿜는 탁월한 밀착력을 경험하십시오.
 
 === SECTION: POINT 3 === ⚡ POINT 03. 감격스러운 효능의 차이 ===
-연구의 본질은 압도적인 결과물입니다. 시간이 지날수록 선명해지는 컨디션의 변화가 당신의 가상비와 가심비 모두를 충족시킵니다.
-
-=== SECTION: RESULTS === ✅ 입증된 시간의 결과 ===
-테스트에 참여한 99%가 피부결 및 텍스처 밀도 개선을 경험했습니다. 놀라운 차이는 곧 당신의 이야기가 됩니다.
-
-=== SECTION: INFO === 📦 올바른 보관 및 사용 팁 ===
-원료의 신선도를 위해 직사광선을 피해 보관해 주십시오. 뚜껑을 끝까지 밀봉해 주셔야 고유의 향과 제형이 끝까지 유지됩니다."""
+연구의 본질은 압도적인 결과물입니다. 시간이 지날수록 선명해지는 컨디션의 변화가 당신의 가상비와 가심비 모두를 충족시킵니다."""
 
 def generate_detail_page(prod_name, ref_urls, image_b64=None):
     # Diagnostic: Check for key existence first
@@ -419,15 +418,23 @@ def render_dashboard():
                             st.session_state["last_generated"] = res
                             st.session_state["last_prod_name"] = prod_name
                             
-                            # Add DALL-E 3 Studio shot generation with user feedback
-                            with st.spinner("전문가급 스튜디오 매크로 컷 생성 중 (DALL-E 3, 약 10초 소요)..."):
-                                okey = fetch_api_key("openai")
-                                if okey:
-                                    st.session_state["studio_image_url"] = generate_studio_shot(okey, prod_name)
-                                else:
-                                    st.session_state["studio_image_url"] = None
+                            # CHeck if the result was a quota failure string
+                            if any("API 통신 장애" in s.get("title", "") for s in res):
+                                st.error("🚨 **[초비상] API 키 결제 한도 초과 오류!** API 잔액이 없어 딥러닝 크롤링과 사진 생성이 원천 차단된 상태로 껍데기만 출력되었습니다.")
+                                st.session_state["studio_image_url"] = None
+                            else:
+                                # Add DALL-E 3 Studio shot generation with user feedback
+                                with st.spinner("전문가급 스튜디오 매크로 컷 생성 중 (DALL-E 3, 약 10초 소요)..."):
+                                    okey = fetch_api_key("openai")
+                                    if okey:
+                                        dalle_img = generate_studio_shot(okey, prod_name)
+                                        if not dalle_img:
+                                            st.warning("⚠️ DALL-E 3 호출 실패(잔고부족 추정)로 메인 사진만 재사용됩니다.")
+                                        st.session_state["studio_image_url"] = dalle_img
+                                    else:
+                                        st.session_state["studio_image_url"] = None
 
-                            st.success("✅ 고급 기획 및 스튜디오 컷 생성이 완료되었습니다!")
+                                st.success("✅ 고급 기획 및 스튜디오 컷 생성이 완료되었습니다!")
                         else:
                             st.error("생성에 실패했습니다. 다시 시도해주세요.")
                     except Exception as gen_err:
