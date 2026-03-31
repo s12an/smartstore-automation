@@ -462,22 +462,40 @@ def render_dashboard():
     if not fetch_api_key("openai") and not fetch_api_key("gemini"):
         st.warning("⚠️ AI 설정이 부재하여 Zimage 모드로 자동 가동 중입니다. (무제한)")
 
+    # 사이드바에 생성된 상세페이지 미리보기 패널
     st.sidebar.markdown("---")
-    st.sidebar.markdown("#### 🌐 앱 공유 주소")
-    # 확인된 실제 배포 주소
-    LIVE_URL = "https://smartstore-automation.streamlit.app/"
-    st.sidebar.link_button(
-        "👉 이곳을 누르면 앱이 열립니다",
-        LIVE_URL,
-        use_container_width=True,
-        type="primary"
-    )
-    st.sidebar.code(LIVE_URL, language=None)
-    st.sidebar.caption(
-        "⚠️ 사용자들이 로그인 없이 접속하려면:\n"
-        "Streamlit Cloud → 앱 설정 → Sharing\n"
-        "→ 'Public' 으로 변경 필요"
-    )
+    st.sidebar.markdown("#### 🗂️ 생성된 상세페이지 미리보기")
+    preview_sections = st.session_state.get("last_generated", [])
+    if preview_sections:
+        prod_preview_name = st.session_state.get("last_prod_name", "상품")
+        st.sidebar.success(f"📎 {prod_preview_name}")
+        for idx, sec in enumerate(preview_sections):
+            tag = sec.get("tag", "").strip()
+            title = sec.get("title", "").strip()
+            short_title = title[:20] + "..." if len(title) > 20 else title
+            st.sidebar.markdown(
+                f"""
+                <div style='background:#1a1a2e; border-left: 3px solid #FFD700; 
+                     padding: 8px 12px; margin-bottom: 6px; border-radius: 4px;'>
+                    <div style='color:#FFD700; font-size:10px; font-weight:700; 
+                         letter-spacing:1px;'>{idx+1}. {tag}</div>
+                    <div style='color:#EEE; font-size:12px; margin-top:3px;'>{short_title}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        st.sidebar.caption(f"전체 {len(preview_sections)}개 섹션 생성됨")
+    else:
+        st.sidebar.markdown(
+            """
+            <div style='background:#111; border: 1px dashed #333; padding:20px; 
+                 border-radius:8px; text-align:center; color:#555;'>
+                🗒️ 아직 생성된<br>상세페이지 없음<br>
+                <span style='font-size:11px;'>상품명 입력 후<br>생성 시작 누르세요</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     with st.expander("📝 상품 정보 입력", expanded=True):
         prod_name = st.text_input("상품명", placeholder="예: 달바 퍼스트 스프레이 세럼 100ml")
@@ -498,19 +516,41 @@ def render_dashboard():
         except Exception as img_err:
             st.error(f"이미지 업로드 중 오류 발생: {img_err}. 다시 시도해주세요.")
 
+        zimage_only = st.checkbox(
+            "🌟 Zimage 전용 모드 (AI API 사용 안 함, 실수없이 무제한 생성)",
+            value=True,
+            help="체크하면 GPT/Gemini API 없이 달바 프로 템플릿으로 즉시 생성합니다."
+        )
+
         if st.button("🚀 생성 시작", type="primary", use_container_width=True):
             if not prod_name:
                 st.error("상품명을 입력해주세요.")
             else:
-                with st.spinner("최고급 '나노바나나프로' 엔진으로 Vision AI 분석 및 생성 중..."):
+                spinner_msg = (
+                    "⚡ Zimage 프로 템플릿 엔진 실행 중... (API 무료, 무제한 생성)"
+                    if zimage_only else
+                    "최고급 '나노바나나프로' 엔진으로 Vision AI 분석 및 생성 중..."
+                )
+                with st.spinner(spinner_msg):
                     try:
                         # Extract Base64 if image exists
                         img_b64 = None
                         if st.session_state.get("uploaded_img"):
                             img_b64 = image_to_base64(st.session_state["uploaded_img"])
-                            st.session_state["uploaded_img_b64"] = img_b64 # Cache for rendering
-                            
-                        res = generate_detail_page(prod_name, ref_urls, img_b64)
+                            st.session_state["uploaded_img_b64"] = img_b64
+
+                        # Zimage 전용 모드: AI 스킵, 바로 Zimage 템플릿
+                        if zimage_only:
+                            res = parse_zimage_content(prod_name, ref_urls)
+                            # 크롤링 이미지만 수집
+                            crawled_imgs = scrape_product_images(ref_urls)
+                            st.session_state["crawled_imgs"] = crawled_imgs
+                            st.session_state["last_generated"] = res
+                            st.session_state["last_prod_name"] = prod_name
+                            st.session_state["studio_image_url"] = None
+                            st.success("✅ Zimage 프로 템플릿 생성 완료! (API 무료)")
+                        else:
+                            res = generate_detail_page(prod_name, ref_urls, img_b64)
                         # 크롤링에서 제품 이미지 수집
                         crawled_imgs = scrape_product_images(ref_urls)
                         st.session_state["crawled_imgs"] = crawled_imgs
